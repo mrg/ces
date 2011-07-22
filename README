@@ -1,0 +1,2 @@
+This project is to create an EntitySorter for Cayenne that is free of
+the Ashwood library and replaces Cayenne's AshwoodEntitySorter.
