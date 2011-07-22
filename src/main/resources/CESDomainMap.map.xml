@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-map xmlns="http://cayenne.apache.org/schema/3.0/modelMap"
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xsi:schemaLocation="http://cayenne.apache.org/schema/3.0/modelMap http://cayenne.apache.org/schema/3.0/modelMap.xsd"
+	 project-version="6">
+	<property name="defaultPackage" value="mrg.data"/>
+	<db-entity name="tst_by">
+		<db-attribute name="fk_li" type="BIGINT"/>
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="tst_ce">
+		<db-attribute name="fk_ce" type="BIGINT"/>
+		<db-attribute name="fk_i" type="BIGINT"/>
+		<db-attribute name="fk_qty_by" type="BIGINT"/>
+		<db-attribute name="fk_tc_by" type="BIGINT"/>
+		<db-attribute name="fk_uc_by" type="BIGINT"/>
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="name" type="VARCHAR" length="50"/>
+	</db-entity>
+	<db-entity name="tst_i">
+		<db-attribute name="fk_li" type="BIGINT"/>
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="lot" type="VARCHAR" length="8"/>
+	</db-entity>
+	<db-entity name="tst_li">
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="number" type="INTEGER"/>
+	</db-entity>
+	<obj-entity name="BudgetYear" className="mrg.data.BudgetYear" dbEntityName="tst_by">
+	</obj-entity>
+	<obj-entity name="CostElement" className="mrg.data.CostElement" dbEntityName="tst_ce">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
+	<obj-entity name="Item" className="mrg.data.Item" dbEntityName="tst_i">
+		<obj-attribute name="lot" type="java.lang.String" db-attribute-path="lot"/>
+	</obj-entity>
+	<obj-entity name="LineItem" className="mrg.data.LineItem" dbEntityName="tst_li">
+		<obj-attribute name="number" type="java.lang.Integer" db-attribute-path="number"/>
+	</obj-entity>
+	<db-relationship name="lineItem" source="tst_by" target="tst_li" toMany="false">
+		<db-attribute-pair source="fk_li" target="id"/>
+	</db-relationship>
+	<db-relationship name="qtyCostElements" source="tst_by" target="tst_ce" toMany="true">
+		<db-attribute-pair source="id" target="fk_qty_by"/>
+	</db-relationship>
+	<db-relationship name="tcCostElements" source="tst_by" target="tst_ce" toMany="true">
+		<db-attribute-pair source="id" target="fk_tc_by"/>
+	</db-relationship>
+	<db-relationship name="ucCostElements" source="tst_by" target="tst_ce" toMany="true">
+		<db-attribute-pair source="id" target="fk_uc_by"/>
+	</db-relationship>
+	<db-relationship name="costElements" source="tst_ce" target="tst_ce" toMany="true">
+		<db-attribute-pair source="id" target="fk_ce"/>
+	</db-relationship>
+	<db-relationship name="item" source="tst_ce" target="tst_i" toMany="false">
+		<db-attribute-pair source="fk_i" target="id"/>
+	</db-relationship>
+	<db-relationship name="parentCostElement" source="tst_ce" target="tst_ce" toMany="false">
+		<db-attribute-pair source="fk_ce" target="id"/>
+	</db-relationship>
+	<db-relationship name="quantity" source="tst_ce" target="tst_by" toMany="false">
+		<db-attribute-pair source="fk_qty_by" target="id"/>
+	</db-relationship>
+	<db-relationship name="totalCost" source="tst_ce" target="tst_by" toMany="false">
+		<db-attribute-pair source="fk_tc_by" target="id"/>
+	</db-relationship>
+	<db-relationship name="unitCost" source="tst_ce" target="tst_by" toMany="false">
+		<db-attribute-pair source="fk_uc_by" target="id"/>
+	</db-relationship>
+	<db-relationship name="costElements" source="tst_i" target="tst_ce" toMany="true">
+		<db-attribute-pair source="id" target="fk_i"/>
+	</db-relationship>
+	<db-relationship name="lineItem" source="tst_i" target="tst_li" toMany="false">
+		<db-attribute-pair source="fk_li" target="id"/>
+	</db-relationship>
+	<db-relationship name="budgetYears" source="tst_li" target="tst_by" toMany="true">
+		<db-attribute-pair source="id" target="fk_li"/>
+	</db-relationship>
+	<db-relationship name="items" source="tst_li" target="tst_i" toMany="true">
+		<db-attribute-pair source="id" target="fk_li"/>
+	</db-relationship>
+	<obj-relationship name="lineItem" source="BudgetYear" target="LineItem" db-relationship-path="lineItem"/>
+	<obj-relationship name="qtyCostElements" source="BudgetYear" target="CostElement" deleteRule="Nullify" db-relationship-path="qtyCostElements"/>
+	<obj-relationship name="tcCostElements" source="BudgetYear" target="CostElement" deleteRule="Nullify" db-relationship-path="qtyCostElements"/>
+	<obj-relationship name="ucCostElements" source="BudgetYear" target="CostElement" deleteRule="Nullify" db-relationship-path="qtyCostElements"/>
+	<obj-relationship name="costElements" source="CostElement" target="CostElement" deleteRule="Cascade" db-relationship-path="costElements"/>
+	<obj-relationship name="item" source="CostElement" target="Item" deleteRule="Nullify" db-relationship-path="item"/>
+	<obj-relationship name="parentCostElement" source="CostElement" target="CostElement" deleteRule="Nullify" db-relationship-path="parentCostElement"/>
+	<obj-relationship name="quantity" source="CostElement" target="BudgetYear" deleteRule="Cascade" db-relationship-path="quantity"/>
+	<obj-relationship name="totalCost" source="CostElement" target="BudgetYear" deleteRule="Cascade" db-relationship-path="totalCost"/>
+	<obj-relationship name="unitCost" source="CostElement" target="BudgetYear" deleteRule="Cascade" db-relationship-path="unitCost"/>
+	<obj-relationship name="costElements" source="Item" target="CostElement" deleteRule="Cascade" db-relationship-path="costElements"/>
+	<obj-relationship name="lineItem" source="Item" target="LineItem" deleteRule="Nullify" db-relationship-path="lineItem"/>
+	<obj-relationship name="budgetYears" source="LineItem" target="BudgetYear" db-relationship-path="budgetYears"/>
+	<obj-relationship name="items" source="LineItem" target="Item" deleteRule="Cascade" db-relationship-path="items"/>
+</data-map>
