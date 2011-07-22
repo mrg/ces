@@ -7,14 +7,16 @@ import mrg.data.LineItem;
 
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.configuration.server.ServerRuntime;
+import org.apache.cayenne.di.Binder;
+import org.apache.cayenne.di.Module;
+import org.apache.cayenne.map.CayenneEntitySorter;
+import org.apache.cayenne.map.EntitySorter;
 
 public class CESTester
 {
-    /**
-     * @param args
-     */
     public static void main(String[] args)
     {
+//        ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml", new CayenneExtrasModule());
         ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml");
         ObjectContext context        = cayenneRuntime.getContext();
 
@@ -46,5 +48,18 @@ public class CESTester
         context.deleteObject(li);
 
         context.commitChanges();
+    }
+
+
+    /**
+     * Cayenne DI module to inject our entity sorter into the mix.
+     */
+    class CayenneExtrasModule implements Module
+    {
+        @Override
+        public void configure(Binder binder)
+        {
+            binder.bind(EntitySorter.class).to(CayenneEntitySorter.class);
+        }
     }
 }
