@@ -1,2 +1,6 @@
-This project is to create an EntitySorter for Cayenne that is free of
-the Ashwood library and replaces Cayenne's AshwoodEntitySorter.
+This project is to create an EntitySorter for Cayenne 3.1 that is free of
+the Ashwood library and to replace Cayenne's AshwoodEntitySorter.  The
+current library can, in certain circumstances, lead to "Can't extract a
+master key" and "Cycles found" errors due to Ashwood not producing a
+correct dependency graph or if someone overrides equals() on their 
+DataObjects.
