@@ -5,7 +5,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 import org.apache.commons.collections.comparators.ReverseComparator;
@@ -61,9 +63,9 @@ public class CayenneEntitySorter implements EntitySorter
     /**
      * Re-indexes internal sorter in a thread-safe manner.
      */
-    protected void sortIndexes()
+    protected void sortEntities()
     {
-        log.info("sortIndexes() called");
+        log.info("sortEntities() called");
 
         // Correct double check locking per Joshua Bloch.
         //     http://java.sun.com/developer/technicalArticles/Interviews/bloch_effective_08_qa.html
@@ -75,9 +77,10 @@ public class CayenneEntitySorter implements EntitySorter
             synchronized (this)
             {
                 localInitialized = initialized;
-                if (localInitialized)
+
+                if (localInitialized == false)
                 {
-                    reallySortIndexes();
+                    reallySortEntities();
                     initialized = true;
                 }
             }
@@ -85,17 +88,21 @@ public class CayenneEntitySorter implements EntitySorter
     }
 
     /**
-     * Re-indexes internal sorting without synchronization.  Should only be
-     * called by sortIndexes().
-     *
-     * Strategy:
-     * 1) Get all the tables.
-     * 2) Get the relationships for each table.
-     * 3) Create weighted list with most important tables at the front.
+     * Re-indexes internal sorting without synchronization.  All of the the tables
+     * defined by the EntityResolver must be sorted and weighted into a proper
+     * dependency order for correct insertion and deletion of objects/records with
+     * the database.
+     * <p/>
+     * Should only be called by sortIndexes().
+     * <p/>
+     * Strategy:<br/>
+     * 1) Get all the tables.<br/>
+     * 2) Get the relationships for each table.<br/>
+     * 3) Create weighted list with most important tables at the front.<br/>
      */
-    protected void reallySortIndexes()
+    protected void reallySortEntities()
     {
-        log.info("reallySortIndexes() called, entityResolver = " + entityResolver);
+        log.info("reallySortEntities() called, entityResolver = " + entityResolver);
 
         // Bail out if no EntityResolver.  Don't set initialized to true (didn't do anything).
         if (entityResolver == null)
@@ -105,38 +112,93 @@ public class CayenneEntitySorter implements EntitySorter
         Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(entityCount / 8);
         Map<String, DbEntity>               tableMap            = new HashMap<String, DbEntity>(entityCount);
 
-        // Collect all of the database entities (tables).
+        // Collect all of the database entities (tables) defined by the EntityResolver.
         for (DbEntity dbEntity : entityResolver.getDbEntities())
         {
             tableMap.put(dbEntity.getFullyQualifiedName(), dbEntity);
             //                referentialDigraph.addVertex(entity);
         }
 
-        // Find the relationships we care about.
-        for (DbEntity destination : tableMap.values())
-        {
-            for (DbRelationship candidate : destination.getRelationships())
-            {
-                if ((!candidate.isToMany() && !candidate.isToDependentPK()) || candidate.isToMasterPK())
-                {
-                    DbEntity origin = (DbEntity) candidate.getTargetEntity();
-                    boolean newReflexive = destination.equals(origin);
+        LinkedList<DbEntity> weightedDbEntityList = new LinkedList<DbEntity>(entityResolver.getDbEntities());
 
-                    for (DbJoin join : candidate.getJoins())
+        boolean clean;
+
+        START_OVER:
+        do
+        {
+            clean = true; // Hope for the best!
+
+            ListIterator<DbEntity> weightedDbEntityIterator = weightedDbEntityList.listIterator();
+
+            while (weightedDbEntityIterator.hasNext())
+            {
+                int      currentDbIndex  = weightedDbEntityIterator.nextIndex();
+                DbEntity currentDbEntity = weightedDbEntityIterator.next();
+
+                log.info("current db entity = " + currentDbEntity + " " + currentDbIndex);
+
+                for (int i = currentDbIndex + 1; i < weightedDbEntityList.size(); i++)
+                {
+                    DbEntity targetDbEntity = weightedDbEntityList.get(i);
+
+                    log.info("target db entity = " + targetDbEntity + " " + i);
+
+                    for (DbRelationship candidateRelationship : currentDbEntity.getRelationships())
+                    {
+                        log.info("candidate relationship = " + candidateRelationship);
+
+                        if (candidateRelationship.isToMany())
+                            continue; // Don't care about to-many.
+
+                        if (candidateRelationship.isToDependentPK())
+                            continue; // Don't care if the target depends on our PK.
+
+                        if (candidateRelationship.isToPK()) // Now we start to care!
+                        {
+                            if (candidateRelationship.getTargetEntity().equals(targetDbEntity))
+                            {
+                                log.info("DO SOMETHING HERE");
+                                weightedDbEntityIterator.remove(); // Remove the currentDbEntity
+                                weightedDbEntityList.add(i, currentDbEntity); // Put it AFTER the one we just found that we depend upon.
+                                clean = false;
+                                continue START_OVER;
+                            }
+                        }
+                    }
+                }
+            }
+        } while (clean == false);
+
+        // Loop over all of the tables to find the relationships we care about.  These
+        // relationships will determine the proper ordering of the tables.
+        for (DbEntity destinationTable : tableMap.values())
+        {
+            // Loop over all the relationships in the table.
+            for (DbRelationship candidateRelationship : destinationTable.getRelationships())
+            {
+                // Check to see if we care about this relationship.  We care about FKs -> PKs.
+                if ((!candidateRelationship.isToMany() && !candidateRelationship.isToDependentPK()) || candidateRelationship.isToMasterPK())
+                {
+                    DbEntity origin       = (DbEntity) candidateRelationship.getTargetEntity();
+                    boolean  newReflexive = destinationTable.equals(origin);
+
+                    for (DbJoin join : candidateRelationship.getJoins())
                     {
                         DbAttribute targetAttribute = join.getTarget();
+
                         if (targetAttribute.isPrimaryKey())
                         {
-
                             if (newReflexive)
                             {
-                                List<DbRelationship> reflexiveRels = reflexiveDbEntities.get(destination);
-                                if (reflexiveRels == null)
+                                List<DbRelationship> reflexiveRelationships = reflexiveDbEntities.get(destinationTable);
+
+                                if (reflexiveRelationships == null)
                                 {
-                                    reflexiveRels = new ArrayList<DbRelationship>(1);
-                                    reflexiveDbEntities.put(destination, reflexiveRels);
+                                    reflexiveRelationships = new ArrayList<DbRelationship>(1);
+                                    reflexiveDbEntities.put(destinationTable, reflexiveRelationships);
                                 }
-                                reflexiveRels.add(candidate);
+
+                                reflexiveRelationships.add(candidateRelationship);
                                 newReflexive = false;
                             }
 
@@ -152,9 +214,7 @@ public class CayenneEntitySorter implements EntitySorter
                     }
                 }
             }
-
         }
-
     }
 
     /**
@@ -163,6 +223,7 @@ public class CayenneEntitySorter implements EntitySorter
      *
      * @since 3.1
      */
+    @Override
     public void setEntityResolver(EntityResolver entityResolver)
     {
         this.entityResolver = entityResolver;
@@ -176,6 +237,7 @@ public class CayenneEntitySorter implements EntitySorter
      * @deprecated since 3.1 {@link #setEntityResolver(EntityResolver)} is used, and this
      *             method is never called.
      */
+    @Override
     @Deprecated
     @SuppressWarnings("unchecked")
     public void setDataMaps(Collection<DataMap> dataMaps)
@@ -183,22 +245,22 @@ public class CayenneEntitySorter implements EntitySorter
         setEntityResolver(new EntityResolver(dataMaps == null ? Collections.EMPTY_LIST : dataMaps));
     }
 
+    @Override
     public void sortDbEntities(List<DbEntity> dbEntities, boolean deleteOrder)
     {
-        // TODO Auto-generated method stub
-
+        sortEntities();
     }
 
+    @Override
     public void sortObjEntities(List<ObjEntity> objEntities, boolean deleteOrder)
     {
-        // TODO Auto-generated method stub
-
+        sortEntities();
     }
 
+    @Override
     public void sortObjectsForEntity(ObjEntity entity, List<?> objects, boolean deleteOrder)
     {
-        // TODO Auto-generated method stub
-
+        sortEntities();
     }
 
     protected Comparator<DbEntity> getDbEntityComparator(boolean dependantFirst)
@@ -223,6 +285,7 @@ public class CayenneEntitySorter implements EntitySorter
 
     private final class ObjEntityComparator implements Comparator<ObjEntity>
     {
+        @Override
         public int compare(ObjEntity o1, ObjEntity o2)
         {
             if (o1 == o2)
@@ -235,6 +298,7 @@ public class CayenneEntitySorter implements EntitySorter
 
     private final class DbEntityComparator implements Comparator<DbEntity>
     {
+        @Override
         public int compare(DbEntity t1, DbEntity t2)
         {
             int result = 0;
