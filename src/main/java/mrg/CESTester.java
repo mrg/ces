@@ -16,8 +16,8 @@ public class CESTester
 {
     public static void main(String[] args)
     {
-//        ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml", new CayenneExtrasModule());
-        ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml");
+        ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml", new CayenneExtrasModule());
+//        ServerRuntime cayenneRuntime = new ServerRuntime("cayenne-CESDomain.xml");
         ObjectContext context        = cayenneRuntime.getContext();
 
         LineItem    li  = context.newObject(LineItem.class);
@@ -54,7 +54,7 @@ public class CESTester
     /**
      * Cayenne DI module to inject our entity sorter into the mix.
      */
-    class CayenneExtrasModule implements Module
+    private static class CayenneExtrasModule implements Module
     {
         @Override
         public void configure(Binder binder)
