@@ -17,6 +17,12 @@
 		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="50"/>
 	</db-entity>
+	<db-entity name="tst_dep1">
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="tst_dep2">
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+	</db-entity>
 	<db-entity name="tst_ds">
 		<db-attribute name="ds_fk" type="BIGINT"/>
 		<db-attribute name="hp_fk" type="BIGINT"/>
@@ -82,6 +88,12 @@
 	</db-relationship>
 	<db-relationship name="unitCost" source="tst_ce" target="tst_by" toMany="false">
 		<db-attribute-pair source="fk_uc_by" target="id"/>
+	</db-relationship>
+	<db-relationship name="dep2" source="tst_dep1" target="tst_dep2" toDependentPK="true" toMany="false">
+		<db-attribute-pair source="id" target="id"/>
+	</db-relationship>
+	<db-relationship name="dep1" source="tst_dep2" target="tst_dep1" toMany="true">
+		<db-attribute-pair source="id" target="id"/>
 	</db-relationship>
 	<db-relationship name="deliverySchedules" source="tst_ds" target="tst_ds" toMany="true">
 		<db-attribute-pair source="id" target="ds_fk"/>
