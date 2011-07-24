@@ -2,6 +2,7 @@ package org.apache.cayenne.map;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -111,7 +112,8 @@ public class CayenneEntitySorter implements EntitySorter
             return;
 
         // Assume there aren't that many reflexive relationships in most models.
-        Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(8);
+//        Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(8);
+        reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(8);
 //        Map<String, DbEntity>               tableMap            = new HashMap<String, DbEntity>(entityCount);
 
         // Collect all of the database entities (tables) defined by the EntityResolver.
@@ -136,7 +138,7 @@ public class CayenneEntitySorter implements EntitySorter
 
         final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:S Z");
 
-        log.debug("Start: " + dateFormat.format(new Date()));
+        log.info("Start: " + dateFormat.format(new Date()));
 
 
         /**
@@ -152,11 +154,13 @@ public class CayenneEntitySorter implements EntitySorter
          * dependent DbEntity objects are after the DbEntity they depend upon.
          */
 
-        boolean squeakyClean;
+        boolean squeakyClean = false;
 
         START_OVER:
         do
         {
+            log.info("Weighting: " + weightedDbEntities);
+
             ListIterator<DbEntity> weightedDbEntityIterator = weightedDbEntities.listIterator();
 
             while (weightedDbEntityIterator.hasNext())
@@ -192,7 +196,7 @@ public class CayenneEntitySorter implements EntitySorter
 
                                 weightedDbEntityIterator.remove(); // Remove the currentDbEntity
                                 weightedDbEntities.add(i, currentDbEntity); // Put it AFTER the one we just found that we depend upon.
-                                squeakyClean = false;
+
                                 continue START_OVER;
                             }
                         }
@@ -203,9 +207,18 @@ public class CayenneEntitySorter implements EntitySorter
             squeakyClean = true; // Made it!
         } while (squeakyClean == false);
 
-        log.debug("End: " + dateFormat.format(new Date()));
+        log.info("End: " + dateFormat.format(new Date()));
 
-    log.info("weighted list: " + weightedDbEntities);
+        int componentIndex = 0;
+        components = new HashMap<DbEntity, ComponentRecord>(weightedDbEntities.size());
+
+        for (DbEntity dbEntity : weightedDbEntities)
+        {
+            ComponentRecord rec = new ComponentRecord(componentIndex++, dbEntity);
+
+                components.put(dbEntity, rec);
+        }
+        componentIndex = 0;
 
         // Loop over all of the tables to find the relationships we care about.  These
         // relationships will determine the proper ordering of the tables.
@@ -253,6 +266,28 @@ public class CayenneEntitySorter implements EntitySorter
 //                }
 //            }
 //        }
+
+
+//        Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(8);
+
+        // Find reflexive
+        for (DbEntity dbEntity : weightedDbEntities)
+        {
+            for (DbRelationship relationship : dbEntity.getRelationships())
+            {
+                if (relationship.getTargetEntity().equals(dbEntity))
+                {
+                    List<DbRelationship> reflexiveRelationships = reflexiveDbEntities.get(dbEntity);
+
+                    if (reflexiveRelationships == null)
+                        reflexiveDbEntities.put(dbEntity, reflexiveRelationships = new ArrayList<DbRelationship>());
+
+                    reflexiveRelationships.add(relationship);
+                }
+            }
+        }
+
+//        this.reflexiveDbEntities = reflexiveDbEntities;
     }
 
     /**
@@ -303,6 +338,11 @@ public class CayenneEntitySorter implements EntitySorter
     {
         sortEntities();
         // TODO: Add the rest of the code here.
+    }
+
+    protected boolean isReflexive(DbEntity dbEntity)
+    {
+        return reflexiveDbEntities.containsKey(dbEntity);
     }
 
     @SuppressWarnings("unchecked")
@@ -374,13 +414,20 @@ public class CayenneEntitySorter implements EntitySorter
     private final static class ComponentRecord
     {
         int                  index; // FIXME: This is really the weight
-        Collection<DbEntity> component;
+//        Collection<DbEntity> component;
+        DbEntity component;
 
-        ComponentRecord(int index, Collection<DbEntity> component)
+//        ComponentRecord(int index, Collection<DbEntity> component)
+        ComponentRecord(int index, DbEntity component)
         {
             this.index = index;
             this.component = component;
         }
 
+        @Override
+        public String toString()
+        {
+            return component + "=" + index;
+        }
     }
 }
