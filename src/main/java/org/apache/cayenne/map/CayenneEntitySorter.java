@@ -1,9 +1,12 @@
 package org.apache.cayenne.map;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -119,16 +122,31 @@ public class CayenneEntitySorter implements EntitySorter
             //                referentialDigraph.addVertex(entity);
         }
 
-        LinkedList<DbEntity> weightedDbEntityList = new LinkedList<DbEntity>(entityResolver.getDbEntities());
+        /**
+         * The weighted list of DbEntity objects (representing tables). This
+         * list will be modified so that the most important "heavier" DbEntity
+         * objects (those that contain primary keys which are needed as foreign
+         * keys by later objects) are at the beginning of the list and the least
+         * important "lighter" DbEntity objects (those needing the primary keys
+         * of previous objects) are at the end. This is for insert ordering.
+         * Delete ordering is the weighted list reversed. The list is
+         * initialized with all the DbEntity objects in the current
+         * EntityResolver and then sorted in-place.
+         */
+        LinkedList<DbEntity> weightedDbEntities = new LinkedList<DbEntity>(entityResolver.getDbEntities());
 
-        boolean clean;
+        final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:S Z");
+
+System.out.println(dateFormat.format(new Date()));
+
+
+        boolean squeakyClean;
 
         START_OVER:
         do
         {
-            clean = true; // Hope for the best!
 
-            ListIterator<DbEntity> weightedDbEntityIterator = weightedDbEntityList.listIterator();
+            ListIterator<DbEntity> weightedDbEntityIterator = weightedDbEntities.listIterator();
 
             while (weightedDbEntityIterator.hasNext())
             {
@@ -137,37 +155,43 @@ public class CayenneEntitySorter implements EntitySorter
 
                 log.info("current db entity = " + currentDbEntity + " " + currentDbIndex);
 
-                for (int i = currentDbIndex + 1; i < weightedDbEntityList.size(); i++)
+                for (int i = currentDbIndex + 1; i < weightedDbEntities.size(); i++)
                 {
-                    DbEntity targetDbEntity = weightedDbEntityList.get(i);
+                    DbEntity targetDbEntity = weightedDbEntities.get(i);
 
                     log.info("target db entity = " + targetDbEntity + " " + i);
 
-                    for (DbRelationship candidateRelationship : currentDbEntity.getRelationships())
+                    for (DbRelationship currentRelationship : currentDbEntity.getRelationships())
                     {
-                        log.info("candidate relationship = " + candidateRelationship);
+                        log.info("candidate relationship = " + currentRelationship);
 
-                        if (candidateRelationship.isToMany())
-                            continue; // Don't care about to-many.
-
-                        if (candidateRelationship.isToDependentPK())
-                            continue; // Don't care if the target depends on our PK.
-
-                        if (candidateRelationship.isToPK()) // Now we start to care!
+                        // If the current relationship target equals the target DbEntity, process it.
+                        if (currentRelationship.getTargetEntity().equals(targetDbEntity))
                         {
-                            if (candidateRelationship.getTargetEntity().equals(targetDbEntity))
+                            if (currentRelationship.isToMany())
+                                continue; // Don't care about to-many (PK to an FK).
+
+                            if (currentRelationship.isToDependentPK())
+                                continue; // Don't care if the target depends on our PK.
+
+                            if (currentRelationship.isToPK()) // Now we start to care!
                             {
-                                log.info("DO SOMETHING HERE");
+                                // The current DbEntity depends on the target DbEntity for a
+                                // primary key and needs to be moved AFTER the target DbEntity.
+
                                 weightedDbEntityIterator.remove(); // Remove the currentDbEntity
-                                weightedDbEntityList.add(i, currentDbEntity); // Put it AFTER the one we just found that we depend upon.
-                                clean = false;
+                                weightedDbEntities.add(i, currentDbEntity); // Put it AFTER the one we just found that we depend upon.
+                                squeakyClean = false;
                                 continue START_OVER;
                             }
                         }
                     }
                 }
             }
-        } while (clean == false);
+
+            squeakyClean = true; // Made it!
+        } while (squeakyClean == false);
+System.out.println(dateFormat.format(new Date()));
 
         // Loop over all of the tables to find the relationships we care about.  These
         // relationships will determine the proper ordering of the tables.
