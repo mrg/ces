@@ -30,7 +30,8 @@ public class CayenneEntitySorter implements EntitySorter
 
     protected EntityResolver entityResolver;
 
-    protected Map<DbEntity, ComponentRecord>      components;
+//    protected Map<DbEntity, DbEntityWeight>      components;
+    protected Map<DbEntity, Integer> weightedDbEntityMap;
     protected Map<DbEntity, List<DbRelationship>> reflexiveDbEntities;
 
     protected Comparator<DbEntity>  dbEntityComparator;
@@ -209,16 +210,25 @@ public class CayenneEntitySorter implements EntitySorter
 
         log.info("End: " + dateFormat.format(new Date()));
 
-        int componentIndex = 0;
-        components = new HashMap<DbEntity, ComponentRecord>(weightedDbEntities.size());
+        weightedDbEntityMap = new HashMap<DbEntity, Integer>(weightedDbEntities.size());
+
+        int weight = 0;
 
         for (DbEntity dbEntity : weightedDbEntities)
         {
-            ComponentRecord rec = new ComponentRecord(componentIndex++, dbEntity);
-
-                components.put(dbEntity, rec);
+            weightedDbEntityMap.put(dbEntity, weight++);
         }
-        componentIndex = 0;
+
+//        int componentIndex = 0;
+//        components = new HashMap<DbEntity, DbEntityWeight>(weightedDbEntities.size());
+//
+//        for (DbEntity dbEntity : weightedDbEntities)
+//        {
+//            DbEntityWeight rec = new DbEntityWeight(componentIndex++, dbEntity);
+//
+//                components.put(dbEntity, rec);
+//        }
+//        componentIndex = 0;
 
         // Loop over all of the tables to find the relationships we care about.  These
         // relationships will determine the proper ordering of the tables.
@@ -399,35 +409,42 @@ public class CayenneEntitySorter implements EntitySorter
                 result = 1;
             else
             {
-                ComponentRecord rec1 = components.get(t1);
-                ComponentRecord rec2 = components.get(t2);
-                int index1 = rec1.index;
-                int index2 = rec2.index;
-                result = (index1 > index2 ? 1 : (index1 < index2 ? -1 : 0));
-                if (result != 0 && rec1.component == rec2.component)
-                    result = 0;
+                int weight1 = weightedDbEntityMap.get(t1);
+                int weight2 = weightedDbEntityMap.get(t2);
+//                DbEntityWeight rec1 = components.get(t1);
+//                DbEntityWeight rec2 = components.get(t2);
+//                int index1 = rec1.weight;
+//                int index2 = rec2.weight;
+                result = (weight1 > weight2 ? 1 : (weight1 < weight2 ? -1 : 0));
+//                result = (index1 > index2 ? 1 : (index1 < index2 ? -1 : 0));
+//                if (result != 0 && rec1.dbEntity == rec2.dbEntity)
+//                    result = 0;
             }
             return result;
         }
     }
 
-    private final static class ComponentRecord
-    {
-        int                  index; // FIXME: This is really the weight
-//        Collection<DbEntity> component;
-        DbEntity component;
-
-//        ComponentRecord(int index, Collection<DbEntity> component)
-        ComponentRecord(int index, DbEntity component)
-        {
-            this.index = index;
-            this.component = component;
-        }
-
-        @Override
-        public String toString()
-        {
-            return component + "=" + index;
-        }
-    }
+//    /**
+//     * Holds the DbEntity to Weight mapping.
+//     * FIXME: Make this a freaking map!
+//     */
+//    private final static class DbEntityWeight
+//    {
+//        int                  weight; // FIXME: This is really the weight
+////        Collection<DbEntity> component;
+//        DbEntity dbEntity;
+//
+////        ComponentRecord(int index, Collection<DbEntity> component)
+//        DbEntityWeight(int index, DbEntity component)
+//        {
+//            this.weight = index;
+//            this.dbEntity = component;
+//        }
+//
+//        @Override
+//        public String toString()
+//        {
+//            return dbEntity + "=" + weight;
+//        }
+//    }
 }
