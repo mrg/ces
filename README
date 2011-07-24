@@ -1,3 +1,5 @@
+Project Status: NON-FUNCTIONAL (in progress)
+
 This project is to create an EntitySorter for Cayenne 3.1 that is free of
 the Ashwood library and to replace Cayenne's AshwoodEntitySorter.  The
 current library can, in certain circumstances, lead to "Can't extract a
