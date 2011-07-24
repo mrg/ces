@@ -17,6 +17,15 @@
 		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="50"/>
 	</db-entity>
+	<db-entity name="tst_ds">
+		<db-attribute name="ds_fk" type="BIGINT"/>
+		<db-attribute name="hp_fk" type="BIGINT"/>
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="tst_hp">
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="m_fk" type="BIGINT"/>
+	</db-entity>
 	<db-entity name="tst_i">
 		<db-attribute name="fk_li" type="BIGINT"/>
 		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
@@ -25,6 +34,10 @@
 	<db-entity name="tst_li">
 		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="number" type="INTEGER"/>
+	</db-entity>
+	<db-entity name="tst_m">
+		<db-attribute name="ce_fk" type="BIGINT"/>
+		<db-attribute name="id" type="BIGINT" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 	</db-entity>
 	<obj-entity name="BudgetYear" className="mrg.data.BudgetYear" dbEntityName="tst_by">
 	</obj-entity>
@@ -55,6 +68,9 @@
 	<db-relationship name="item" source="tst_ce" target="tst_i" toMany="false">
 		<db-attribute-pair source="fk_i" target="id"/>
 	</db-relationship>
+	<db-relationship name="manufacturers" source="tst_ce" target="tst_m" toMany="true">
+		<db-attribute-pair source="id" target="ce_fk"/>
+	</db-relationship>
 	<db-relationship name="parentCostElement" source="tst_ce" target="tst_ce" toMany="false">
 		<db-attribute-pair source="fk_ce" target="id"/>
 	</db-relationship>
@@ -67,6 +83,21 @@
 	<db-relationship name="unitCost" source="tst_ce" target="tst_by" toMany="false">
 		<db-attribute-pair source="fk_uc_by" target="id"/>
 	</db-relationship>
+	<db-relationship name="deliverySchedules" source="tst_ds" target="tst_ds" toMany="true">
+		<db-attribute-pair source="id" target="ds_fk"/>
+	</db-relationship>
+	<db-relationship name="historyPlanning" source="tst_ds" target="tst_hp" toMany="false">
+		<db-attribute-pair source="hp_fk" target="id"/>
+	</db-relationship>
+	<db-relationship name="parentDeliverySchedule" source="tst_ds" target="tst_ds" toMany="false">
+		<db-attribute-pair source="ds_fk" target="id"/>
+	</db-relationship>
+	<db-relationship name="deliverySchedules" source="tst_hp" target="tst_ds" toMany="true">
+		<db-attribute-pair source="id" target="hp_fk"/>
+	</db-relationship>
+	<db-relationship name="manufacturer" source="tst_hp" target="tst_m" toMany="false">
+		<db-attribute-pair source="m_fk" target="id"/>
+	</db-relationship>
 	<db-relationship name="costElements" source="tst_i" target="tst_ce" toMany="true">
 		<db-attribute-pair source="id" target="fk_i"/>
 	</db-relationship>
@@ -78,6 +109,12 @@
 	</db-relationship>
 	<db-relationship name="items" source="tst_li" target="tst_i" toMany="true">
 		<db-attribute-pair source="id" target="fk_li"/>
+	</db-relationship>
+	<db-relationship name="costElement" source="tst_m" target="tst_ce" toMany="false">
+		<db-attribute-pair source="ce_fk" target="id"/>
+	</db-relationship>
+	<db-relationship name="historyPlannings" source="tst_m" target="tst_hp" toMany="true">
+		<db-attribute-pair source="id" target="m_fk"/>
 	</db-relationship>
 	<obj-relationship name="lineItem" source="BudgetYear" target="LineItem" db-relationship-path="lineItem"/>
 	<obj-relationship name="qtyCostElements" source="BudgetYear" target="CostElement" deleteRule="Nullify" db-relationship-path="qtyCostElements"/>
