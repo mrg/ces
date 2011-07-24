@@ -2,7 +2,6 @@ package org.apache.cayenne.map;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -111,16 +110,16 @@ public class CayenneEntitySorter implements EntitySorter
         if (entityResolver == null)
             return;
 
-        int                                 entityCount         = entityResolver.getDbEntities().size();
-        Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(entityCount / 8);
-        Map<String, DbEntity>               tableMap            = new HashMap<String, DbEntity>(entityCount);
+        // Assume there aren't that many reflexive relationships in most models.
+        Map<DbEntity, List<DbRelationship>> reflexiveDbEntities = new HashMap<DbEntity, List<DbRelationship>>(8);
+//        Map<String, DbEntity>               tableMap            = new HashMap<String, DbEntity>(entityCount);
 
         // Collect all of the database entities (tables) defined by the EntityResolver.
-        for (DbEntity dbEntity : entityResolver.getDbEntities())
-        {
-            tableMap.put(dbEntity.getFullyQualifiedName(), dbEntity);
-            //                referentialDigraph.addVertex(entity);
-        }
+//        for (DbEntity dbEntity : entityResolver.getDbEntities())
+//        {
+//            tableMap.put(dbEntity.getFullyQualifiedName(), dbEntity);
+//            //                referentialDigraph.addVertex(entity);
+//        }
 
         /**
          * The weighted list of DbEntity objects (representing tables). This
@@ -137,15 +136,27 @@ public class CayenneEntitySorter implements EntitySorter
 
         final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:S Z");
 
-System.out.println(dateFormat.format(new Date()));
+        log.debug("Start: " + dateFormat.format(new Date()));
 
+
+        /**
+         * The method for determining the correct weighting is to loop over the
+         * weighted list of DbEntity objects (the currentDbEntity) and compare
+         * the relationships in currentDbEntity to each of the following
+         * DbEntity objects (the targetDbEntity). If the currentDbEntity has a
+         * relationship to the targetDbEntity and if the relationship depends
+         * upon the targetDbEntity's primary key(s), then the currentDbEntity needs
+         * to be moved to be after the targetDbEntity. The currentDbEntity will
+         * have a lesser weight than the target. If the currentDbEntity is
+         * moved, we start over and continue this process until all of the
+         * dependent DbEntity objects are after the DbEntity they depend upon.
+         */
 
         boolean squeakyClean;
 
         START_OVER:
         do
         {
-
             ListIterator<DbEntity> weightedDbEntityIterator = weightedDbEntities.listIterator();
 
             while (weightedDbEntityIterator.hasNext())
@@ -191,54 +202,57 @@ System.out.println(dateFormat.format(new Date()));
 
             squeakyClean = true; // Made it!
         } while (squeakyClean == false);
-System.out.println(dateFormat.format(new Date()));
+
+        log.debug("End: " + dateFormat.format(new Date()));
+
+    log.info("weighted list: " + weightedDbEntities);
 
         // Loop over all of the tables to find the relationships we care about.  These
         // relationships will determine the proper ordering of the tables.
-        for (DbEntity destinationTable : tableMap.values())
-        {
-            // Loop over all the relationships in the table.
-            for (DbRelationship candidateRelationship : destinationTable.getRelationships())
-            {
-                // Check to see if we care about this relationship.  We care about FKs -> PKs.
-                if ((!candidateRelationship.isToMany() && !candidateRelationship.isToDependentPK()) || candidateRelationship.isToMasterPK())
-                {
-                    DbEntity origin       = (DbEntity) candidateRelationship.getTargetEntity();
-                    boolean  newReflexive = destinationTable.equals(origin);
-
-                    for (DbJoin join : candidateRelationship.getJoins())
-                    {
-                        DbAttribute targetAttribute = join.getTarget();
-
-                        if (targetAttribute.isPrimaryKey())
-                        {
-                            if (newReflexive)
-                            {
-                                List<DbRelationship> reflexiveRelationships = reflexiveDbEntities.get(destinationTable);
-
-                                if (reflexiveRelationships == null)
-                                {
-                                    reflexiveRelationships = new ArrayList<DbRelationship>(1);
-                                    reflexiveDbEntities.put(destinationTable, reflexiveRelationships);
-                                }
-
-                                reflexiveRelationships.add(candidateRelationship);
-                                newReflexive = false;
-                            }
-
-//                            List<DbAttribute> fks = referentialDigraph.getArc(origin, destination);
-//                            if (fks == null)
+//        for (DbEntity destinationTable : tableMap.values())
+//        {
+//            // Loop over all the relationships in the table.
+//            for (DbRelationship candidateRelationship : destinationTable.getRelationships())
+//            {
+//                // Check to see if we care about this relationship.  We care about FKs -> PKs.
+//                if ((!candidateRelationship.isToMany() && !candidateRelationship.isToDependentPK()) || candidateRelationship.isToMasterPK())
+//                {
+//                    DbEntity origin       = (DbEntity) candidateRelationship.getTargetEntity();
+//                    boolean  newReflexive = destinationTable.equals(origin);
+//
+//                    for (DbJoin join : candidateRelationship.getJoins())
+//                    {
+//                        DbAttribute targetAttribute = join.getTarget();
+//
+//                        if (targetAttribute.isPrimaryKey())
+//                        {
+//                            if (newReflexive)
 //                            {
-//                                fks = new ArrayList<DbAttribute>();
-//                                referentialDigraph.putArc(origin, destination, fks);
+//                                List<DbRelationship> reflexiveRelationships = reflexiveDbEntities.get(destinationTable);
+//
+//                                if (reflexiveRelationships == null)
+//                                {
+//                                    reflexiveRelationships = new ArrayList<DbRelationship>(1);
+//                                    reflexiveDbEntities.put(destinationTable, reflexiveRelationships);
+//                                }
+//
+//                                reflexiveRelationships.add(candidateRelationship);
+//                                newReflexive = false;
 //                            }
 //
-//                            fks.add(targetAttribute);
-                        }
-                    }
-                }
-            }
-        }
+////                            List<DbAttribute> fks = referentialDigraph.getArc(origin, destination);
+////                            if (fks == null)
+////                            {
+////                                fks = new ArrayList<DbAttribute>();
+////                                referentialDigraph.putArc(origin, destination, fks);
+////                            }
+////
+////                            fks.add(targetAttribute);
+//                        }
+//                    }
+//                }
+//            }
+//        }
     }
 
     /**
@@ -269,43 +283,51 @@ System.out.println(dateFormat.format(new Date()));
         setEntityResolver(new EntityResolver(dataMaps == null ? Collections.EMPTY_LIST : dataMaps));
     }
 
+
     @Override
     public void sortDbEntities(List<DbEntity> dbEntities, boolean deleteOrder)
     {
         sortEntities();
+        Collections.sort(dbEntities, getDbEntityComparator(deleteOrder));
     }
 
     @Override
     public void sortObjEntities(List<ObjEntity> objEntities, boolean deleteOrder)
     {
         sortEntities();
+        Collections.sort(objEntities, getObjEntityComparator(deleteOrder));
     }
 
     @Override
     public void sortObjectsForEntity(ObjEntity entity, List<?> objects, boolean deleteOrder)
     {
         sortEntities();
+        // TODO: Add the rest of the code here.
     }
 
+    @SuppressWarnings("unchecked")
     protected Comparator<DbEntity> getDbEntityComparator(boolean dependantFirst)
     {
-        Comparator<DbEntity> c = dbEntityComparator;
+        Comparator<DbEntity> comparator = dbEntityComparator;
 
         if (dependantFirst)
-            c = new ReverseComparator(c);
+            comparator = new ReverseComparator(comparator);
 
-        return c;
+        return comparator;
     }
 
+
+    @SuppressWarnings("unchecked")
     protected Comparator<ObjEntity> getObjEntityComparator(boolean dependantFirst)
     {
-        Comparator<ObjEntity> c = objEntityComparator;
+        Comparator<ObjEntity> comparator = objEntityComparator;
 
         if (dependantFirst)
-            c = new ReverseComparator(c);
+            comparator = new ReverseComparator(comparator);
 
-        return c;
+        return comparator;
     }
+
 
     private final class ObjEntityComparator implements Comparator<ObjEntity>
     {
@@ -314,8 +336,10 @@ System.out.println(dateFormat.format(new Date()));
         {
             if (o1 == o2)
                 return 0;
+
             DbEntity t1 = o1.getDbEntity();
             DbEntity t2 = o2.getDbEntity();
+
             return dbEntityComparator.compare(t1, t2);
         }
     }
