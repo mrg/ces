@@ -1,4 +1,9 @@
-Project Status: NON-FUNCTIONAL (in progress)
+Project Status: NON-FUNCTIONAL / SUSPENDED
+                Found a logic bomb in my original approach which, while
+                helping to uncover a graph cycle in our schema which is
+                the original culprit and inspiration for this project,
+                ultimately will require more time to fix than I care to
+                spend right now.
 
 This project is to create an EntitySorter for Cayenne 3.1 that is free of
 the Ashwood library and to replace Cayenne's AshwoodEntitySorter.  The
